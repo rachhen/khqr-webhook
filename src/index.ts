@@ -1,9 +1,22 @@
-import { Hono } from "hono";
+import { createApp } from "./lib/create-app";
+import { registerOpenAPI } from "./lib/register-openapi";
+import transaction from "./routes/transaction/transaction.index";
 
-const app = new Hono<{ Bindings: CloudflareBindings }>();
+export * from "./workflows";
 
-app.get("/message", (c) => {
-  return c.text("Hello Hono!");
+const app = createApp();
+
+registerOpenAPI(app);
+
+app.get("/error", (c) => {
+  throw new Error("Ops!");
 });
 
+app
+  // .route("/", index)
+  // .route("/api/v1", checkout)
+  .route("/api/v1", transaction);
+
 export default app;
+
+export type AppType = typeof app;

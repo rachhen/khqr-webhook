@@ -7,13 +7,29 @@
 	"name": "khqr-webhook",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-04-30",
-	"assets": {
-		"binding": "ASSETS",
-		"directory": "./public"
-	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	"workflows": [
+    {
+      "name": "transaction",
+      "binding": "TRX_WORKFLOW",
+      "class_name": "TrxWorkflow"
+    },
+		{
+      "name": "webhook",
+      "binding": "WEBHOOK_WORKFLOW",
+      "class_name": "WebhookWorkflow"
+    }
+  ],
+
+	"kv_namespaces": [
+    {
+      "binding": "KHQR_WEBHOOK",
+      "id": "433098ec4a0748adbf5d0687c40e3eef"
+    }
+  ]
+
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

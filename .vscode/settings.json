@@ -1,0 +1,15 @@
+{
+  "files.associations": {
+    "wrangler.json": "jsonc"
+  },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.removeUnusedImports": "explicit",
+  },
+  "editor.tabSize": 2,
+  "cSpell.words": [
+    "bakong",
+    "khqr"
+  ]
+}
