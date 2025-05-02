@@ -2,7 +2,6 @@ import { createRoute, z } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
 
-import { requiredApiKey } from "~/middleware/auth";
 import { createErrorSchema, createValidationErrorSchema } from "~/schema/error";
 import {
   TransactionBodySchema,
@@ -16,7 +15,7 @@ export const createTransaction = createRoute({
   tags,
   method: "post",
   path: "/transaction",
-  middleware: [requiredApiKey] as const,
+  // middleware: [requiredApiKey] as const,
   security: [{ apiKey: [] }],
   description: "Create a new transaction",
   request: {
@@ -50,7 +49,7 @@ export const getTransactionByMd5 = createRoute({
   tags,
   method: "get",
   path: "/transaction/{md5}",
-  middleware: [requiredApiKey] as const,
+  // middleware: [requiredApiKey] as const,
   security: [{ apiKey: [] }],
   description: "Get a transaction by md5",
   request: {
@@ -80,7 +79,7 @@ export const trackTransaction = createRoute({
   tags,
   method: "get",
   path: "/transaction/{md5}/track",
-  middleware: [requiredApiKey] as const,
+  // middleware: [requiredApiKey] as const,
   security: [{ apiKey: [] }],
   description: "Track a transaction by md5",
   request: {

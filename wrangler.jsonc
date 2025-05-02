@@ -6,20 +6,20 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "khqr-webhook",
 	"main": "src/index.ts",
-	"compatibility_date": "2025-04-30",
+	"compatibility_date": "2025-04-28",
 	"observability": {
 		"enabled": true
 	},
 	"workflows": [
     {
-      "name": "transaction",
+      "name": "khqr-transaction",
       "binding": "TRX_WORKFLOW",
-      "class_name": "TrxWorkflow"
+      "class_name": "TrxWorkflow",
     },
 		{
-      "name": "webhook",
+      "name": "khqr-webhook",
       "binding": "WEBHOOK_WORKFLOW",
-      "class_name": "WebhookWorkflow"
+      "class_name": "WebhookWorkflow",
     }
   ],
 

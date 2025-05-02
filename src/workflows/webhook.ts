@@ -54,7 +54,6 @@ export class WebhookWorkflow extends WorkflowEntrypoint<
           return json;
         } catch (error) {
           console.log("Error parsing webhook response", error);
-          throw new NonRetryableError("Error parsing webhook response");
         }
       }
     );

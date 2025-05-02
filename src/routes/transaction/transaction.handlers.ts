@@ -108,8 +108,6 @@ export const trackTransaction: AppRouteHandler<TrackTransactionRoute> = async (
         const instance = await c.env.TRX_WORKFLOW.get(md5);
         const instanceStatus = await instance.status();
 
-        console.log(instanceStatus);
-
         const isCompleted = instanceStatus.status === "complete" || false;
         const isFailed =
           instanceStatus.status === "errored" ||

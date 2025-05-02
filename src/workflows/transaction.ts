@@ -22,6 +22,7 @@ export class TrxWorkflow extends WorkflowEntrypoint<
     // Can access bindings on `this.env`
     // Can access params on `event.payload`
     const timeoutInMinutes = Number(this.env.TIMEOUT_IN_MINUTES ?? "5");
+    const { md5, webhookUrl } = event.payload;
 
     const token = await step.do(
       "get new token",
@@ -58,83 +59,100 @@ export class TrxWorkflow extends WorkflowEntrypoint<
     );
 
     await step.do(
-      "check transaction status",
+      `check transaction ${md5} status`,
       // Define a retry strategy
       {
         retries: {
-          limit: Number.POSITIVE_INFINITY,
+          limit: 3,
           delay: "5 second",
           backoff: "constant",
         },
-        timeout: "1 minutes",
+        timeout: "10 minutes",
       },
       async () => {
-        // if the workflow age exceeds 5mn, it will be considered failed
         const TIMEOUT = 1000 * 60 * timeoutInMinutes;
-        if (event.timestamp.getTime() + TIMEOUT < Date.now()) {
-          console.log("❌ Transaction Expired");
-          await this.env.WEBHOOK_WORKFLOW.create({
-            id: event.payload.md5,
-            params: {
-              webhookUrl: event.payload.webhookUrl,
-              md5: event.payload.md5,
-              status: "expired",
-              data: null,
-            },
-          });
-          throw new NonRetryableError("Transaction Expired");
-        }
+        let retriesAttempt = 0;
 
-        const khqrTrx = await getTransactionByMd5(token, event.payload.md5);
+        while (true) {
+          // if the workflow age exceeds 5mn, it will be considered failed
+          if (event.timestamp.getTime() + TIMEOUT < Date.now()) {
+            console.log("❌ Transaction Expired");
+            await this.env.WEBHOOK_WORKFLOW.create({
+              id: event.payload.md5,
+              params: { webhookUrl, md5, status: "expired", data: null },
+            });
+            break;
+          }
 
-        if (khqrTrx.error) {
-          console.log(
-            `Failed to get transaction status: ${khqrTrx.error.message}`
-          );
-          throw khqrTrx.error;
-        }
+          const khqrTrx = await getTransactionByMd5(token, event.payload.md5);
 
-        // if we get error code
-        if (khqrTrx.value.responseCode === 1) {
-          // error code 1 means transaction failed
-          if (khqrTrx.value.errorCode === 3) {
-            // Send webhook to the failure webhook
+          if (khqrTrx.error) {
+            console.log(
+              `Failed to get transaction ${md5} status: ${khqrTrx.error.message}`
+            );
+
+            await sleep(5000);
+            retriesAttempt++;
+            continue; // retry the workflow
+          }
+
+          // if we get error code
+          if (khqrTrx.value.responseCode === 1) {
+            // error code 1 means transaction failed
+            if (khqrTrx.value.errorCode === 3) {
+              // Send webhook to the failure webhook
+              await this.env.WEBHOOK_WORKFLOW.create({
+                id: event.payload.md5,
+                params: {
+                  webhookUrl: event.payload.webhookUrl,
+                  md5: event.payload.md5,
+                  status: "failed",
+                  data: null,
+                },
+              });
+
+              console.log(
+                `❌ Transaction ${md5} failed: ${khqrTrx.value.responseMessage}`
+              );
+              break;
+            }
+
+            if (retriesAttempt > 0) {
+              await sleep(5000);
+            }
+
+            // otherwise, it's not found
+            retriesAttempt++;
+            console.log(
+              `🔃 Transaction ${md5} not found, attempt number: ${retriesAttempt}`
+            );
+            continue;
+          }
+
+          // if we get success code
+          if (khqrTrx.value.responseCode === 0) {
+            // Send webhook to the success webhook
+            console.log(`✅ Transaction ${md5} success`);
             await this.env.WEBHOOK_WORKFLOW.create({
               id: event.payload.md5,
               params: {
-                webhookUrl: event.payload.webhookUrl,
-                md5: event.payload.md5,
-                status: "failed",
-                data: null,
+                webhookUrl,
+                md5,
+                status: "success",
+                data: khqrTrx.value.data,
               },
             });
-
-            console.log(
-              `❌ Transaction failed: ${khqrTrx.value.responseMessage}`
-            );
-            throw new NonRetryableError(khqrTrx.value.responseMessage);
+            break;
           }
 
-          // otherwise, it's not found
-          console.log("🔃 Transaction not found, retrying...");
-          throw new Error(khqrTrx.value.responseMessage);
-        }
-
-        // if we get success code
-        if (khqrTrx.value.responseCode === 0) {
-          // Send webhook to the success webhook
-          console.log("✅ Transaction success");
-          await this.env.WEBHOOK_WORKFLOW.create({
-            id: event.payload.md5,
-            params: {
-              webhookUrl: event.payload.webhookUrl,
-              md5: event.payload.md5,
-              status: "success",
-              data: khqrTrx.value.data,
-            },
-          });
+          // if we get unknown code
+          console.log(`❌ An unknown error occurs on transaction ${md5}`);
         }
       }
     );
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
