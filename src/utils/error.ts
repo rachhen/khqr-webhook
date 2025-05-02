@@ -46,6 +46,7 @@ export function apiError(options: ApiErrorOptions) {
 }
 
 export const onError: ErrorHandler<AppEnv> = (err, c) => {
+  console.error(err);
   if (err instanceof ApiError) {
     const { name, code, message, statusCode, details } = err;
     return c.json({ name, code, message, details }, statusCode);
