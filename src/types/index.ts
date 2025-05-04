@@ -1,9 +1,11 @@
 import type { OpenAPIHono, RouteConfig, RouteHandler } from "@hono/zod-openapi";
 
-export interface AppEnv {
-	Bindings: CloudflareBindings;
-	// Variables: {};
-}
+export type AppEnv = {
+	// Bindings: CloudflareBindings;
+	Variables: {
+		HELLO: string;
+	};
+};
 
 export type AppHono = OpenAPIHono<AppEnv>;
 

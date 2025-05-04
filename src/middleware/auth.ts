@@ -1,29 +1,25 @@
 import { createMiddleware } from "hono/factory";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 
+import { env } from "~/env";
 import type { AppEnv } from "~/types";
 import { apiError } from "~/utils/error";
 
 export const requiredApiKey = createMiddleware<AppEnv>(async (c, next) => {
-  const authorization = c.req.header("Authorization");
+	if (!env.API_KEY) {
+		await next();
+		return;
+	}
 
-  const token = authorization?.split(" ")[1]; // Bearer tokentokentoken...
+	const authentication = c.req.header("Authorization");
+	const apiKey = authentication?.split(" ")[1];
+	if (!apiKey || apiKey !== env.API_KEY) {
+		throw apiError({
+			name: "UNAUTHORIZED",
+			message: "Invalid API key",
+			statusCode: HttpStatusCodes.UNAUTHORIZED,
+		});
+	}
 
-  if (!token) {
-    throw apiError({
-      name: "UNAUTHORIZED",
-      message: "Unauthorized",
-      statusCode: HttpStatusCodes.UNAUTHORIZED,
-    });
-  }
-
-  if (token !== c.env.API_KEY) {
-    throw apiError({
-      name: "UNAUTHORIZED",
-      message: "Unauthorized",
-      statusCode: HttpStatusCodes.UNAUTHORIZED,
-    });
-  }
-
-  await next();
+	await next();
 });

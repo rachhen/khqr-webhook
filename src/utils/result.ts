@@ -49,9 +49,9 @@ export const ok = <T>(data: T): Result<T> => ({ value: data, error: null });
  */
 
 export const err = (error: any): Err =>
-  error instanceof Error
-    ? { value: null, error }
-    : { value: null, error: new Error(error, { cause: error }) };
+	error instanceof Error
+		? { value: null, error }
+		: { value: null, error: new Error(error, { cause: error }) };
 
 /**
  * Checks if a Result is successful.
@@ -68,7 +68,7 @@ export const err = (error: any): Err =>
  * }
  */
 export const isOk = <T>(
-  result: Result<T>
+	result: Result<T>,
 ): result is { value: T; error: null } => result.error === null;
 
 /**
@@ -86,5 +86,5 @@ export const isOk = <T>(
  * }
  */
 export const isErr = <T>(
-  result: Result<T>
+	result: Result<T>,
 ): result is { value: null; error: Error } => result.error !== null;
