@@ -1,41 +1,63 @@
-import * as HttpStatusCodes from "stoker/http-status-codes";
 import { streamSSE } from "hono/streaming";
+import * as HttpStatusCodes from "stoker/http-status-codes";
 
 import type { AppRouteHandler } from "~/types";
 
+import { apiError } from "~/utils/error";
+import { getBakongTokenByEmail, getTransactionByMd5 } from "~/utils/khqr";
 import type {
-  CreateTransactionRoute,
+  CreateTransactionEmailRoute,
+  CreateTransactionTokenRoute,
   GetTransactionByMd5Route,
   TrackTransactionRoute,
 } from "./transaction.routes";
-import { generateNewToken, getTransactionByMd5 } from "~/utils/khqr";
-import { getKhqrToken, setKhqrToken } from "~/utils/cache";
-import { apiError } from "~/utils/error";
+import { transactionQueue } from "~/queues/transaction";
+import { isBakongTokenExpired } from "~/utils/jwt";
 
-export const createTransactionHandler: AppRouteHandler<
-  CreateTransactionRoute
+export const createTransactionToken: AppRouteHandler<
+  CreateTransactionTokenRoute
 > = async (c) => {
   const body = c.req.valid("json");
 
-  try {
-    const instance = await c.env.TRX_WORKFLOW.get(body.md5);
-    if (instance.id) {
-      return c.json(
-        { message: "The transaction already exists" },
-        HttpStatusCodes.OK
-      );
-    }
-  } catch (error) {}
+  if (isBakongTokenExpired(body.token)) {
+    throw apiError({
+      name: "UNAUTHORIZED",
+      message: "Token is expired",
+      statusCode: HttpStatusCodes.UNAUTHORIZED,
+    });
+  }
 
-  const instance = await c.env.TRX_WORKFLOW.create({
-    id: body.md5,
-    params: body,
+  const jobId = crypto.randomUUID();
+  await transactionQueue.add({
+    jobId,
+    token: body.token,
+    md5: body.md5,
+    webhookUrl: body.webhookUrl,
   });
 
-  const status = await instance.status();
+  return c.json(
+    { message: "Transaction created", jobId },
+    HttpStatusCodes.CREATED
+  );
+};
+
+export const createTransactionEmail: AppRouteHandler<
+  CreateTransactionEmailRoute
+> = async (c) => {
+  const body = c.req.valid("json");
+
+  const token = await getBakongTokenByEmail(body.email);
+
+  const jobId = crypto.randomUUID();
+  await transactionQueue.add({
+    token,
+    jobId,
+    md5: body.md5,
+    webhookUrl: body.webhookUrl,
+  });
 
   return c.json(
-    { message: "Transaction created", status: status.status },
+    { message: "Transaction created", jobId },
     HttpStatusCodes.CREATED
   );
 };
@@ -44,20 +66,22 @@ export const getTransactionByMd5Handler: AppRouteHandler<
   GetTransactionByMd5Route
 > = async (c) => {
   const md5 = c.req.param("md5");
+  const qtoken = c.req.query("token");
+  const email = c.req.query("email");
 
-  let token = await getKhqrToken(c.env);
+  let token: string | undefined;
+  if (qtoken) {
+    token = qtoken;
+  } else if (email) {
+    token = await getBakongTokenByEmail(email);
+  }
+
   if (!token) {
-    const khqrToken = await generateNewToken(c.env.BAKONG_REGISTERED_EMAIL);
-    if (khqrToken.error) {
-      throw apiError({
-        name: "INTERNAL_SERVER_ERROR",
-        message: khqrToken.error.message,
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      });
-    }
-
-    c.executionCtx.waitUntil(setKhqrToken(c.env, khqrToken.value));
-    token = khqrToken.value.token;
+    throw apiError({
+      name: "BAD_REQUEST",
+      message: "Token or email is required",
+      statusCode: HttpStatusCodes.BAD_REQUEST,
+    });
   }
 
   const result = await getTransactionByMd5(token, md5);
@@ -94,7 +118,7 @@ export const getTransactionByMd5Handler: AppRouteHandler<
 export const trackTransaction: AppRouteHandler<TrackTransactionRoute> = async (
   c
 ) => {
-  const md5 = c.req.param("md5");
+  const jobId = c.req.param("jobId");
 
   return streamSSE(
     c,
@@ -105,14 +129,9 @@ export const trackTransaction: AppRouteHandler<TrackTransactionRoute> = async (
       });
 
       while (true) {
-        const instance = await c.env.TRX_WORKFLOW.get(md5);
-        const instanceStatus = await instance.status();
-
-        const isCompleted = instanceStatus.status === "complete" || false;
-        const isFailed =
-          instanceStatus.status === "errored" ||
-          instanceStatus.status === "terminated" ||
-          false;
+        const job = await transactionQueue.queue.getJob(jobId);
+        const isCompleted = (await job?.isCompleted()) ?? false;
+        const isFailed = (await job?.isFailed()) ?? false;
 
         if (isCompleted) {
           await stream.writeSSE({ data: "COMPLETED" });

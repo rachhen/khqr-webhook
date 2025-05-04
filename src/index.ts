@@ -1,22 +1,12 @@
-import { createApp } from "./lib/create-app";
-import { registerOpenAPI } from "./lib/register-openapi";
-import transaction from "./routes/transaction/transaction.index";
+import { serve } from "@hono/node-server";
 
-export * from "./workflows";
+import app from "./app";
+import { env } from "./env";
 
-const app = createApp();
+const port = env.PORT;
+console.log(`Server is running on port http://localhost:${port}`);
 
-registerOpenAPI(app);
-
-app.get("/error", (c) => {
-  throw new Error("Ops!");
+serve({
+	fetch: app.fetch,
+	port,
 });
-
-app
-  // .route("/", index)
-  // .route("/api/v1", checkout)
-  .route("/api/v1", transaction);
-
-export default app;
-
-export type AppType = typeof app;

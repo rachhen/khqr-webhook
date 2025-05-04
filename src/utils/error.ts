@@ -8,6 +8,8 @@ import type { AppEnv } from "~/types";
 
 export const ERROR = [
   "VALIDATION_ERROR",
+  "UNPROCESSABLE_ENTITY",
+  "BAD_REQUEST",
   "UNAUTHORIZED",
   "FORBIDDEN",
   "NOT_FOUND",

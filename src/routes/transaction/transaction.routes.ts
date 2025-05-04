@@ -1,29 +1,34 @@
 import { createRoute, z } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentRequired } from "stoker/openapi/helpers";
+import { requiredApiKey } from "~/middleware/auth";
 
 import { createErrorSchema, createValidationErrorSchema } from "~/schema/error";
 import {
-  TransactionBodySchema,
+  TransactionBodyEmailSchema,
+  TransactionBodyTokenSchema,
   TransactionDataSchema,
   TransactionParamsMd5,
 } from "~/schema/transaction";
 
 const tags = ["Transaction"];
 
-export const createTransaction = createRoute({
+export const createTransactionToken = createRoute({
   tags,
   method: "post",
-  path: "/transaction",
-  // middleware: [requiredApiKey] as const,
+  path: "/transaction/token",
   security: [{ apiKey: [] }],
-  description: "Create a new transaction",
+  middleware: [requiredApiKey] as const,
+  description: "Create a new transaction by bakong token get from bakong",
   request: {
-    body: jsonContentRequired(TransactionBodySchema, "The transaction body"),
+    body: jsonContentRequired(
+      TransactionBodyTokenSchema,
+      "The transaction body that get from bakong"
+    ),
   },
   responses: {
     [HttpStatusCodes.CREATED]: jsonContent(
-      z.object({ message: z.string(), status: z.string() }),
+      z.object({ message: z.string(), jobId: z.string() }),
       "The transaction has been created"
     ),
     [HttpStatusCodes.OK]: jsonContent(
@@ -35,7 +40,44 @@ export const createTransaction = createRoute({
       "Unauthorized"
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createValidationErrorSchema(TransactionBodySchema),
+      createValidationErrorSchema(TransactionBodyTokenSchema),
+      "The transaction body is invalid"
+    ),
+    [HttpStatusCodes.INTERNAL_SERVER_ERROR]: jsonContent(
+      createErrorSchema(HttpStatusCodes.INTERNAL_SERVER_ERROR),
+      "Unknown error"
+    ),
+  },
+});
+
+export const createTransactionEmail = createRoute({
+  tags,
+  method: "post",
+  path: "/transaction/email",
+  security: [{ apiKey: [] }],
+  middleware: [requiredApiKey] as const,
+  description: "Create a new transaction by bakong registered email",
+  request: {
+    body: jsonContentRequired(
+      TransactionBodyEmailSchema,
+      "The transaction body that registered on bakong"
+    ),
+  },
+  responses: {
+    [HttpStatusCodes.CREATED]: jsonContent(
+      z.object({ message: z.string(), jobId: z.string() }),
+      "The transaction has been created"
+    ),
+    [HttpStatusCodes.OK]: jsonContent(
+      z.object({ message: z.string() }),
+      "The transaction already exists"
+    ),
+    [HttpStatusCodes.UNAUTHORIZED]: jsonContent(
+      createErrorSchema(HttpStatusCodes.UNAUTHORIZED),
+      "Unauthorized"
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createValidationErrorSchema(TransactionBodyEmailSchema),
       "The transaction body is invalid"
     ),
     [HttpStatusCodes.INTERNAL_SERVER_ERROR]: jsonContent(
@@ -48,12 +90,22 @@ export const createTransaction = createRoute({
 export const getTransactionByMd5 = createRoute({
   tags,
   method: "get",
-  path: "/transaction/{md5}",
-  // middleware: [requiredApiKey] as const,
+  path: "/transaction/{md5}/md5",
   security: [{ apiKey: [] }],
+  middleware: [requiredApiKey] as const,
   description: "Get a transaction by md5",
   request: {
     params: TransactionParamsMd5,
+    query: z.object({
+      token: z.string().optional().openapi({
+        description:
+          "The token that get from Bakong. Noted: The token maybe expired.",
+      }),
+      email: z.string().optional().openapi({
+        description:
+          "The email that registered from Bakong. Noted: The renew token api from Bakong is unstable and may not work.",
+      }),
+    }),
   },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
@@ -78,12 +130,12 @@ export const getTransactionByMd5 = createRoute({
 export const trackTransaction = createRoute({
   tags,
   method: "get",
-  path: "/transaction/{md5}/track",
-  // middleware: [requiredApiKey] as const,
+  path: "/transaction/{jobId}/track",
   security: [{ apiKey: [] }],
-  description: "Track a transaction by md5",
+  middleware: [requiredApiKey] as const,
+  description: "Track a transaction by id",
   request: {
-    params: TransactionParamsMd5,
+    params: z.object({ jobId: z.string() }),
   },
   responses: {
     [HttpStatusCodes.OK]: {
@@ -101,6 +153,7 @@ export const trackTransaction = createRoute({
   },
 });
 
-export type CreateTransactionRoute = typeof createTransaction;
+export type CreateTransactionTokenRoute = typeof createTransactionToken;
+export type CreateTransactionEmailRoute = typeof createTransactionEmail;
 export type GetTransactionByMd5Route = typeof getTransactionByMd5;
 export type TrackTransactionRoute = typeof trackTransaction;

@@ -3,7 +3,8 @@ import { z } from "@hono/zod-openapi";
 export type ZodSchema =
   | z.ZodUnion<any>
   | z.AnyZodObject
-  | z.ZodArray<z.AnyZodObject>;
+  | z.ZodArray<z.AnyZodObject>
+  | z.ZodDiscriminatedUnion<any, any>;
 
 export const createValidationErrorSchema = <T extends ZodSchema>(schema: T) => {
   const { error } = schema.safeParse(

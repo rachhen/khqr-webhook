@@ -13,7 +13,22 @@ export const TransactionDataSchema = z.object({
   acknowledgedDateMs: z.number(),
 });
 
-export const TransactionBodySchema = z.object({
-  md5: z.string(),
+const baseTransactionBodySchema = z.object({
+  md5: z.string().openapi({ description: "The md5 of the transaction" }),
   webhookUrl: z.string().url(),
+});
+
+export const TransactionBodyEmailSchema = baseTransactionBodySchema.extend({
+  email: z
+    .string()
+    .email()
+    .openapi({ description: "The Email that registered from Bakong" }),
+});
+
+export const TransactionBodyTokenSchema = baseTransactionBodySchema.extend({
+  token: z
+    .string()
+    .openapi({
+      description: "The token get from Bakong. The token maybe expired",
+    }),
 });
