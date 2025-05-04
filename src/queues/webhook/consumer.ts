@@ -46,7 +46,7 @@ export class WebhookConsumer implements Consumer {
 				status: job.data.status,
 				data: job.data.data,
 				md5: job.data.md5,
-				transactionId: job.data.jobId,
+				jobId: job.data.jobId,
 			}),
 		});
 
