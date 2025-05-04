@@ -2,6 +2,7 @@
 	"name": "khqr-webhook",
 	"version": "0.0.1",
 	"scripts": {
+		"start": "bun run src/index.ts",
 		"dev": "bun run --watch src/index.ts",
 		"check": "biome check --fix ./src",
 		"test": "vitest"
