@@ -12,55 +12,55 @@ const BACKOFF = { type: "exponential", delay: 500 };
 const ATTMEPTS = 5;
 
 export type WebhookJobData =
-  | {
-      jobId: string;
-      webhookUrl: string;
-      md5: string;
-      status: "failed" | "timeout";
-      data: KhqrTransactionSuccess["data"] | null;
-    }
-  | {
-      jobId: string;
-      webhookUrl: string;
-      md5: string;
-      status: "success";
-      data: KhqrTransactionSuccess["data"];
-    };
+	| {
+			jobId: string;
+			webhookUrl: string;
+			md5: string;
+			status: "failed" | "timeout";
+			data: KhqrTransactionSuccess["data"] | null;
+	  }
+	| {
+			jobId: string;
+			webhookUrl: string;
+			md5: string;
+			status: "success";
+			data: KhqrTransactionSuccess["data"];
+	  };
 
 export type WebhookJob = Job<WebhookJobData>;
 
 class WebhookProducer {
-  queue;
+	queue;
 
-  constructor() {
-    this.queue = new Queue<WebhookJobData>(WEBHOOK_QUEUE_NAME, {
-      connection: DEFAULT_CONNECTION,
-    });
-  }
+	constructor() {
+		this.queue = new Queue<WebhookJobData>(WEBHOOK_QUEUE_NAME, {
+			connection: DEFAULT_CONNECTION,
+		});
+	}
 
-  async add(opts: WebhookJobData) {
-    const job = await this.queue.getJob(opts.jobId);
+	async add(opts: WebhookJobData) {
+		const job = await this.queue.getJob(opts.jobId);
 
-    if (job) {
-      const isFailed = await job.isFailed().then(ok).catch(err);
-      if (isFailed.error) return isFailed;
+		if (job) {
+			const isFailed = await job.isFailed().then(ok).catch(err);
+			if (isFailed.error) return isFailed;
 
-      job.retry("failed");
+			job.retry("failed");
 
-      return ok(job);
-    }
+			return ok(job);
+		}
 
-    return this.queue
-      .add(WEBHOOK_QUEUE_NAME, opts, {
-        jobId: opts.jobId,
-        attempts: ATTMEPTS,
-        backoff: BACKOFF,
-        removeOnFail: REMOVE_ON_FAIL,
-        removeOnComplete: REMOVE_ON_SUCCESS,
-      })
-      .then(ok)
-      .catch(err);
-  }
+		return this.queue
+			.add(WEBHOOK_QUEUE_NAME, opts, {
+				jobId: opts.jobId,
+				attempts: ATTMEPTS,
+				backoff: BACKOFF,
+				removeOnFail: REMOVE_ON_FAIL,
+				removeOnComplete: REMOVE_ON_SUCCESS,
+			})
+			.then(ok)
+			.catch(err);
+	}
 }
 
 export const webhookQueue = new WebhookProducer();

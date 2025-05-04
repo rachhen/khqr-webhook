@@ -8,48 +8,46 @@ import { env } from "~/env";
 import type { AppHono } from "~/types";
 
 export const BASIC_AUTH = {
-  username: "admin",
-  password: "admin",
+	username: "admin",
+	password: "admin",
 };
 
 export function registerQueues(app: AppHono, consumers: Consumer[]) {
-  // start all consumers
-  for (const consumer of consumers) {
-    consumer.start();
-  }
+	// start all consumers
+	for (const consumer of consumers) {
+		consumer.start();
+	}
 
-  if (env.NODE_ENV !== "production") {
-    const serverAdapter = new HonoAdapter(serveStatic);
+	if (env.NODE_ENV !== "production") {
+		const serverAdapter = new HonoAdapter(serveStatic);
 
-    createBullBoard({
-      queues: consumers.map(createBullAdapter),
-      serverAdapter,
-    });
+		createBullBoard({
+			queues: consumers.map(createBullAdapter),
+			serverAdapter,
+		});
 
-    serverAdapter.setBasePath("/queue");
+		serverAdapter.setBasePath("/queue");
 
-    app
-      // .use("/queue", basicAuth(BASIC_AUTH))
-      .route("/queue", serverAdapter.registerPlugin());
-  }
+		app
+			// .use("/queue", basicAuth(BASIC_AUTH))
+			.route("/queue", serverAdapter.registerPlugin());
+	}
 }
 
 function createBullAdapter(consumer: Consumer) {
-  return new BullMQAdapter(
-    new Queue(consumer.worker.name, {
-      connection: DEFAULT_CONNECTION,
-    })
-  );
+	return new BullMQAdapter(
+		new Queue(consumer.worker.name, {
+			connection: DEFAULT_CONNECTION,
+		}),
+	);
 }
 
 export const DEFAULT_CONNECTION: ConnectionOptions = {
-  host: env.REDIS_HOST,
-  port: env.REDIS_PORT,
-  password: env.REDIS_PASSWORD,
+	url: env.REDIS_URL,
 };
 
 export interface Consumer {
-  worker: Worker;
-  start(): Promise<void>;
-  shutdown(): Promise<void>;
+	worker: Worker;
+	start(): Promise<void>;
+	shutdown(): Promise<void>;
 }

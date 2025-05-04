@@ -11,7 +11,7 @@ registerQueues(app, [new TransactionConsumer(), new WebhookConsumer()]);
 registerOpenAPI(app);
 
 app.get("/error", (c) => {
-  throw new Error("Ops!");
+	throw new Error("Ops!");
 });
 
 app.route("/api/v1", transaction);

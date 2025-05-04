@@ -11,33 +11,33 @@ const REMOVE_ON_SUCCESS = { count: 5500 };
 const BACKOFF = { type: "fixed", delay: 3200 };
 
 export type TransactionJobData = {
-  md5: string;
-  jobId: string;
-  webhookUrl: string;
-  token: string;
+	md5: string;
+	jobId: string;
+	webhookUrl: string;
+	token: string;
 };
 
 export type TransactionJob = Job<TransactionJobData>;
 
 export class TransactionProducer {
-  queue;
+	queue;
 
-  constructor() {
-    this.queue = new Queue<TransactionJobData>(TRANSACTION_QUEUE_NAME, {
-      connection: DEFAULT_CONNECTION,
-    });
-  }
+	constructor() {
+		this.queue = new Queue<TransactionJobData>(TRANSACTION_QUEUE_NAME, {
+			connection: DEFAULT_CONNECTION,
+		});
+	}
 
-  async add(data: TransactionJobData) {
-    return await this.queue.add(TRANSACTION_QUEUE_NAME, data, {
-      jobId: data.jobId,
-      delay: DELAY,
-      backoff: BACKOFF,
-      attempts: MAXIMUM_ATTEMPTS,
-      removeOnFail: REMOVE_ON_FAIL,
-      removeOnComplete: REMOVE_ON_SUCCESS,
-    });
-  }
+	async add(data: TransactionJobData) {
+		return await this.queue.add(TRANSACTION_QUEUE_NAME, data, {
+			jobId: data.jobId,
+			delay: DELAY,
+			backoff: BACKOFF,
+			attempts: MAXIMUM_ATTEMPTS,
+			removeOnFail: REMOVE_ON_FAIL,
+			removeOnComplete: REMOVE_ON_SUCCESS,
+		});
+	}
 }
 
 export const transactionQueue = new TransactionProducer();
