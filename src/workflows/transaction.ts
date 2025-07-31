@@ -37,14 +37,14 @@ export class TrxWorkflow extends WorkflowEntrypoint<
 			},
 			async () => {
 				// get token from KV
-				const token = await getKhqrToken(this.env);
-				if (token) {
+				const khqrToken = await getKhqrToken(this.env);
+				if (khqrToken) {
 					console.log("✅ Token found in cache");
-					return token;
+					return khqrToken;
 				}
 
 				const newToken = await generateNewToken(
-					this.env.BAKONG_REGISTERED_EMAIL,
+					this.env.BAKONG_REGISTERED_EMAIL
 				);
 
 				if (newToken.error) {
@@ -55,7 +55,7 @@ export class TrxWorkflow extends WorkflowEntrypoint<
 				this.ctx.waitUntil(setKhqrToken(this.env, newToken.value));
 
 				return newToken.value.token;
-			},
+			}
 		);
 
 		await step.do(
@@ -88,7 +88,7 @@ export class TrxWorkflow extends WorkflowEntrypoint<
 
 					if (khqrTrx.error) {
 						console.log(
-							`Failed to get transaction ${md5} status: ${khqrTrx.error.message}`,
+							`Failed to get transaction ${md5} status: ${khqrTrx.error.message}`
 						);
 
 						await sleep(5000);
@@ -112,7 +112,7 @@ export class TrxWorkflow extends WorkflowEntrypoint<
 							});
 
 							console.log(
-								`❌ Transaction ${md5} failed: ${khqrTrx.value.responseMessage}`,
+								`❌ Transaction ${md5} failed: ${khqrTrx.value.responseMessage}`
 							);
 							break;
 						}
@@ -124,7 +124,7 @@ export class TrxWorkflow extends WorkflowEntrypoint<
 						// otherwise, it's not found
 						retriesAttempt++;
 						console.log(
-							`🔃 Transaction ${md5} not found, attempt number: ${retriesAttempt}`,
+							`🔃 Transaction ${md5} not found, attempt number: ${retriesAttempt}`
 						);
 						continue;
 					}
@@ -148,7 +148,7 @@ export class TrxWorkflow extends WorkflowEntrypoint<
 					// if we get unknown code
 					console.log(`❌ An unknown error occurs on transaction ${md5}`);
 				}
-			},
+			}
 		);
 	}
 }
