@@ -1,41 +1,33 @@
-import * as HttpStatusCodes from "stoker/http-status-codes";
 import { streamSSE } from "hono/streaming";
+import * as HttpStatusCodes from "stoker/http-status-codes";
 
 import type { AppRouteHandler } from "~/types";
 
+import { getKhqrToken, setKhqrToken } from "~/utils/cache";
+import { apiError } from "~/utils/error";
+import { generateNewToken, getTransactionByMd5 } from "~/utils/khqr";
 import type {
   CreateTransactionRoute,
   GetTransactionByMd5Route,
   TrackTransactionRoute,
 } from "./transaction.routes";
-import { generateNewToken, getTransactionByMd5 } from "~/utils/khqr";
-import { getKhqrToken, setKhqrToken } from "~/utils/cache";
-import { apiError } from "~/utils/error";
 
 export const createTransactionHandler: AppRouteHandler<
   CreateTransactionRoute
 > = async (c) => {
   const body = c.req.valid("json");
 
-  try {
-    const instance = await c.env.TRX_WORKFLOW.get(body.md5);
-    if (instance.id) {
-      return c.json(
-        { message: "The transaction already exists" },
-        HttpStatusCodes.OK
-      );
-    }
-  } catch (error) {}
 
+  const instanceId = crypto.randomUUID();
   const instance = await c.env.TRX_WORKFLOW.create({
-    id: body.md5,
+    id: instanceId,
     params: body,
   });
 
   const status = await instance.status();
 
   return c.json(
-    { message: "Transaction created", status: status.status },
+    { message: "Transaction created", runId: instanceId, status: status.status },
     HttpStatusCodes.CREATED
   );
 };
@@ -94,7 +86,7 @@ export const getTransactionByMd5Handler: AppRouteHandler<
 export const trackTransaction: AppRouteHandler<TrackTransactionRoute> = async (
   c
 ) => {
-  const md5 = c.req.param("md5");
+  const runId = c.req.param("runId");
 
   return streamSSE(
     c,
@@ -105,7 +97,7 @@ export const trackTransaction: AppRouteHandler<TrackTransactionRoute> = async (
       });
 
       while (true) {
-        const instance = await c.env.TRX_WORKFLOW.get(md5);
+        const instance = await c.env.TRX_WORKFLOW.get(runId);
         const instanceStatus = await instance.status();
 
         const isCompleted = instanceStatus.status === "complete" || false;
@@ -113,6 +105,7 @@ export const trackTransaction: AppRouteHandler<TrackTransactionRoute> = async (
           instanceStatus.status === "errored" ||
           instanceStatus.status === "terminated" ||
           false;
+        ;
 
         if (isCompleted) {
           await stream.writeSSE({ data: "COMPLETED" });

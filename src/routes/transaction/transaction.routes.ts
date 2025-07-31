@@ -23,7 +23,7 @@ export const createTransaction = createRoute({
   },
   responses: {
     [HttpStatusCodes.CREATED]: jsonContent(
-      z.object({ message: z.string(), status: z.string() }),
+      z.object({ message: z.string(), runId: z.string().uuid(), status: z.string() }),
       "The transaction has been created"
     ),
     [HttpStatusCodes.OK]: jsonContent(
@@ -78,12 +78,12 @@ export const getTransactionByMd5 = createRoute({
 export const trackTransaction = createRoute({
   tags,
   method: "get",
-  path: "/transaction/{md5}/track",
+  path: "/transaction/{runId}/track",
   // middleware: [requiredApiKey] as const,
   security: [{ apiKey: [] }],
-  description: "Track a transaction by md5",
+  description: "Track a transaction by runId",
   request: {
-    params: TransactionParamsMd5,
+    params: z.object({ runId: z.string().uuid() }),
   },
   responses: {
     [HttpStatusCodes.OK]: {

@@ -2,13 +2,14 @@ import { createApp } from "./lib/create-app";
 import { registerOpenAPI } from "./lib/register-openapi";
 import transaction from "./routes/transaction/transaction.index";
 
-export * from "./workflows";
+export * from './workflows/transaction';
+export * from './workflows/webhook';
 
 const app = createApp();
 
 registerOpenAPI(app);
 
-app.get("/error", (c) => {
+app.get("/error", () => {
   throw new Error("Ops!");
 });
 
