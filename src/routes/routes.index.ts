@@ -6,20 +6,20 @@ import { createMessageObjectSchema } from "stoker/openapi/schemas";
 import { createRouter } from "~/lib/create-app";
 
 const router = createRouter().openapi(
-  createRoute({
-    tags: ["Index"],
-    method: "get",
-    path: "/",
-    responses: {
-      [HttpStatusCodes.OK]: jsonContent(
-        createMessageObjectSchema("KHQR Webhook API"),
-        "KHQR Webhook index"
-      ),
-    },
-  }),
-  (c) => {
-    return c.json({ message: "KHQR Webhook API" }, HttpStatusCodes.OK);
-  }
+	createRoute({
+		tags: ["Index"],
+		method: "get",
+		path: "/",
+		responses: {
+			[HttpStatusCodes.OK]: jsonContent(
+				createMessageObjectSchema("KHQR Webhook API"),
+				"KHQR Webhook index",
+			),
+		},
+	}),
+	(c) => {
+		return c.json({ message: "KHQR Webhook API" }, HttpStatusCodes.OK);
+	},
 );
 
 export default router;

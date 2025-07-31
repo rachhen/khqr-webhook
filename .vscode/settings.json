@@ -3,9 +3,13 @@
     "wrangler.json": "jsonc"
   },
   "editor.formatOnSave": true,
+  "prettier.enable": false,
+  "eslint.enable": false,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
+    "source.biome": "explicit",
+    "source.fixAll.biome": "explicit",
     "source.removeUnusedImports": "explicit",
+    "source.organizeImports.biome": "explicit"
   },
   "editor.tabSize": 2,
   "cSpell.words": [

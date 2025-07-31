@@ -2,21 +2,21 @@ import { createApp } from "./lib/create-app";
 import { registerOpenAPI } from "./lib/register-openapi";
 import transaction from "./routes/transaction/transaction.index";
 
-export * from './workflows/transaction';
-export * from './workflows/webhook';
+export * from "./workflows/transaction";
+export * from "./workflows/webhook";
 
 const app = createApp();
 
 registerOpenAPI(app);
 
 app.get("/error", () => {
-  throw new Error("Ops!");
+	throw new Error("Ops!");
 });
 
 app
-  // .route("/", index)
-  // .route("/api/v1", checkout)
-  .route("/api/v1", transaction);
+	// .route("/", index)
+	// .route("/api/v1", checkout)
+	.route("/api/v1", transaction);
 
 export default app;
 

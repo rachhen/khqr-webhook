@@ -1,8 +1,8 @@
 import { jwtDecode } from "jwt-decode";
 
 import type {
-  KhqrNewTokenResponse,
-  KhqrTransactionResponse,
+	KhqrNewTokenResponse,
+	KhqrTransactionResponse,
 } from "../types/khqr";
 import { err, ok } from "./result";
 
@@ -16,58 +16,58 @@ export const BAKONG_API_URL = "https://api-bakong.nbc.gov.kh";
  * @returns
  */
 export const getTransactionByMd5 = async (
-  token: string,
-  md5: string,
-  bakongBaseUrl = BAKONG_API_URL
+	token: string,
+	md5: string,
+	bakongBaseUrl = BAKONG_API_URL,
 ) => {
-  const res = await fetch(`${bakongBaseUrl}/v1/check_transaction_by_md5`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ md5 }),
-  });
+	const res = await fetch(`${bakongBaseUrl}/v1/check_transaction_by_md5`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify({ md5 }),
+	});
 
-  if (!res.ok) {
-    return err("Failed to fetch transaction by md5");
-  }
+	if (!res.ok) {
+		return err("Failed to fetch transaction by md5");
+	}
 
-  const data = await res.json<KhqrTransactionResponse>();
+	const data = await res.json<KhqrTransactionResponse>();
 
-  return ok(data);
+	return ok(data);
 };
 
 interface JwtPayload {
-  data: { id: string };
-  exp: number;
-  iat: number;
+	data: { id: string };
+	exp: number;
+	iat: number;
 }
 
 export const generateNewToken = async (
-  email: string,
-  bakongBaseUrl = BAKONG_API_URL
+	email: string,
+	bakongBaseUrl = BAKONG_API_URL,
 ) => {
-  const res = await fetch(`${bakongBaseUrl}/v1/renew_token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email }),
-  });
+	const res = await fetch(`${bakongBaseUrl}/v1/renew_token`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ email }),
+	});
 
-  if (!res.ok) {
-    return err("Failed to generate new token");
-  }
+	if (!res.ok) {
+		return err("Failed to generate new token");
+	}
 
-  const data = await res.json<KhqrNewTokenResponse>();
+	const data = await res.json<KhqrNewTokenResponse>();
 
-  if (data.responseCode === 1) {
-    return err(data.responseMessage);
-  }
+	if (data.responseCode === 1) {
+		return err(data.responseMessage);
+	}
 
-  const decoded = jwtDecode<JwtPayload>(data.data.token);
-  const expiredAt = new Date(decoded.exp * 1000);
+	const decoded = jwtDecode<JwtPayload>(data.data.token);
+	const expiredAt = new Date(decoded.exp * 1000);
 
-  return ok({ token: data.data.token, expiredAt });
+	return ok({ token: data.data.token, expiredAt });
 };

@@ -7,120 +7,122 @@ import { getKhqrToken, setKhqrToken } from "~/utils/cache";
 import { apiError } from "~/utils/error";
 import { generateNewToken, getTransactionByMd5 } from "~/utils/khqr";
 import type {
-  CreateTransactionRoute,
-  GetTransactionByMd5Route,
-  TrackTransactionRoute,
+	CreateTransactionRoute,
+	GetTransactionByMd5Route,
+	TrackTransactionRoute,
 } from "./transaction.routes";
 
 export const createTransactionHandler: AppRouteHandler<
-  CreateTransactionRoute
+	CreateTransactionRoute
 > = async (c) => {
-  const body = c.req.valid("json");
+	const body = c.req.valid("json");
 
+	const instanceId = crypto.randomUUID();
+	const instance = await c.env.TRX_WORKFLOW.create({
+		id: instanceId,
+		params: body,
+	});
 
-  const instanceId = crypto.randomUUID();
-  const instance = await c.env.TRX_WORKFLOW.create({
-    id: instanceId,
-    params: body,
-  });
+	const status = await instance.status();
 
-  const status = await instance.status();
-
-  return c.json(
-    { message: "Transaction created", runId: instanceId, status: status.status },
-    HttpStatusCodes.CREATED
-  );
+	return c.json(
+		{
+			message: "Transaction created",
+			runId: instanceId,
+			status: status.status,
+		},
+		HttpStatusCodes.CREATED,
+	);
 };
 
 export const getTransactionByMd5Handler: AppRouteHandler<
-  GetTransactionByMd5Route
+	GetTransactionByMd5Route
 > = async (c) => {
-  const md5 = c.req.param("md5");
+	const md5 = c.req.param("md5");
 
-  let token = await getKhqrToken(c.env);
-  if (!token) {
-    const khqrToken = await generateNewToken(c.env.BAKONG_REGISTERED_EMAIL);
-    if (khqrToken.error) {
-      throw apiError({
-        name: "INTERNAL_SERVER_ERROR",
-        message: khqrToken.error.message,
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      });
-    }
+	let token = await getKhqrToken(c.env);
+	if (!token) {
+		const khqrToken = await generateNewToken(c.env.BAKONG_REGISTERED_EMAIL);
+		if (khqrToken.error) {
+			throw apiError({
+				name: "INTERNAL_SERVER_ERROR",
+				message: khqrToken.error.message,
+				statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+			});
+		}
 
-    c.executionCtx.waitUntil(setKhqrToken(c.env, khqrToken.value));
-    token = khqrToken.value.token;
-  }
+		c.executionCtx.waitUntil(setKhqrToken(c.env, khqrToken.value));
+		token = khqrToken.value.token;
+	}
 
-  const result = await getTransactionByMd5(token, md5);
+	const result = await getTransactionByMd5(token, md5);
 
-  if (result.error) {
-    throw apiError({
-      name: "INTERNAL_SERVER_ERROR",
-      message: result.error.message,
-      statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-    });
-  }
+	if (result.error) {
+		throw apiError({
+			name: "INTERNAL_SERVER_ERROR",
+			message: result.error.message,
+			statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+		});
+	}
 
-  if (result.value.responseCode === 1) {
-    if (result.value.errorCode === 3) {
-      throw apiError({
-        name: "EXPECTATION_FAILED",
-        code: result.value.errorCode,
-        message: result.value.responseMessage,
-        statusCode: HttpStatusCodes.EXPECTATION_FAILED,
-      });
-    }
+	if (result.value.responseCode === 1) {
+		if (result.value.errorCode === 3) {
+			throw apiError({
+				name: "EXPECTATION_FAILED",
+				code: result.value.errorCode,
+				message: result.value.responseMessage,
+				statusCode: HttpStatusCodes.EXPECTATION_FAILED,
+			});
+		}
 
-    throw apiError({
-      name: "NOT_FOUND",
-      code: result.value.errorCode,
-      message: result.value.responseMessage,
-      statusCode: HttpStatusCodes.NOT_FOUND,
-    });
-  }
+		throw apiError({
+			name: "NOT_FOUND",
+			code: result.value.errorCode,
+			message: result.value.responseMessage,
+			statusCode: HttpStatusCodes.NOT_FOUND,
+		});
+	}
 
-  return c.json(result.value.data, HttpStatusCodes.OK);
+	return c.json(result.value.data, HttpStatusCodes.OK);
 };
 
 export const trackTransaction: AppRouteHandler<TrackTransactionRoute> = async (
-  c
+	c,
 ) => {
-  const runId = c.req.param("runId");
+	const runId = c.req.param("runId");
 
-  return streamSSE(
-    c,
-    async (stream) => {
-      stream.onAbort(async () => {
-        stream.abort();
-        await stream.close();
-      });
+	return streamSSE(
+		c,
+		async (stream) => {
+			stream.onAbort(async () => {
+				stream.abort();
+				await stream.close();
+			});
 
-      while (true) {
-        const instance = await c.env.TRX_WORKFLOW.get(runId);
-        const instanceStatus = await instance.status();
+			while (true) {
+				const instance = await c.env.TRX_WORKFLOW.get(runId);
+				const instanceStatus = await instance.status();
 
-        const isCompleted = instanceStatus.status === "complete" || false;
-        const isFailed =
-          instanceStatus.status === "errored" ||
-          instanceStatus.status === "terminated" ||
-          false;
-        ;
+				const isCompleted = instanceStatus.status === "complete" || false;
+				const isFailed =
+					instanceStatus.status === "errored" ||
+					instanceStatus.status === "terminated" ||
+					false;
 
-        if (isCompleted) {
-          await stream.writeSSE({ data: "COMPLETED" });
-          await stream.close();
-        } else if (isFailed) {
-          await stream.writeSSE({ data: "FAILED" });
-          await stream.close();
-        }
+				if (isCompleted) {
+					await stream.writeSSE({ data: "COMPLETED" });
+					await stream.close();
+				} else if (isFailed) {
+					await stream.writeSSE({ data: "FAILED" });
+					await stream.close();
+				}
 
-        await stream.writeSSE({ data: "PENDING" });
-        await stream.sleep(3000);
-      }
-    },
-    async (error, stream) => {
-      await stream.writeln(`ERROR: ${error.message}`);
-    }
-  );
+				await stream.writeSSE({ data: "PENDING" });
+				await stream.sleep(3000);
+			}
+		},
+		async (error, stream) => {
+			await stream.writeln(`ERROR: ${error.message}`);
+		},
+	);
 };

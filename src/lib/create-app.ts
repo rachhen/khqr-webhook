@@ -7,21 +7,21 @@ import { defaultHook } from "~/utils/default-hook";
 import { notFound, onError } from "~/utils/error";
 
 export function createRouter() {
-  return new OpenAPIHono<AppEnv>({
-    strict: true,
-    defaultHook,
-  });
+	return new OpenAPIHono<AppEnv>({
+		strict: true,
+		defaultHook,
+	});
 }
 
 export function createApp() {
-  const app = createRouter();
+	const app = createRouter();
 
-  app.use(serveEmojiFavicon("📝"));
+	app.use(serveEmojiFavicon("📝"));
 
-  app.use(secureHeaders());
+	app.use(secureHeaders());
 
-  app.notFound(notFound);
-  app.onError(onError);
+	app.notFound(notFound);
+	app.onError(onError);
 
-  return app;
+	return app;
 }
